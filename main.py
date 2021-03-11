@@ -14,7 +14,7 @@ sched = BlockingScheduler()
 @helper.timer
 def get_data():
     response = requests.get("https://api.swaggystocks.com/wsb/sentiment/top")
-    return response.json(), response.status_code
+    return response.json()
 
 
 def get_db():
@@ -34,16 +34,37 @@ def query():
 def update_db(req):
     for i, value in enumerate(req):
         try:
-            arr = get_db().search(query().ticker == value)[0]["arr"]
+            rank = get_db().search(query().ticker == value["ticker"])[0]["rank"]
+            mentions = get_db().search(query().ticker == value["ticker"])[0]["mentions"]
         except IndexError:
-            arr = []
+            rank = []
+            mentions = []
 
-        arr.append((i, value["count_ticker"]))
-        get_db().upsert({"ticker": value["ticker"], "arr": arr}, query().name == value['ticker'])
+        rank.append(i)
+        mentions.append(value["count_ticker"])
+        get_db().upsert({"ticker": value["ticker"], "rank": rank, "mentions": mentions}, query().ticker == value['ticker'])
 
 
-sched.add_job(update_db, "cron", [get_data()[0]], day_of_week='mon-fri', hour=20)
+def get_top():
+    return get_db().search(query().rank[-1] == 0)
+
+
+# TODO: Figure out when to get into the market and with what sized bet based on sentiment
+# make sure you don't short SPY lol
+def activation():
+    pass
+
+
+# TODO: Figure out when to get out of the market based on percent price
+def deactivation():
+    pass
+
+
+# TODO: Find better time interval for when to get new data
+sched.add_job(update_db, "cron", [get_data()], day_of_week='mon-fri', hour=20)
 
 
 if __name__ == "__main__":
-    sched.start()
+    update_db(get_data())
+    print(get_top())
+    # sched.start()

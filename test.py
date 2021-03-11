@@ -1,5 +1,5 @@
 temp = {"ticker": "GME", "count_ticker": 400}
-arr = []
+arr = [1, 2, 3]
 
 # print(temp["cheese"])
-print(arr[0])
+print(arr[-1])
