@@ -1,14 +1,16 @@
-from InvestopediaApi import ita
+from investopedia_api import InvestopediaApi
 from googlefinance import getQuotes
 from tinydb import TinyDB, Query
 import requests
 import helper
 from apscheduler.schedulers.blocking import BlockingScheduler
-
+from dotenv import load_dotenv
+import os
 
 db = None
 cursor = None
 sched = BlockingScheduler()
+client = None
 
 
 @helper.timer
@@ -31,6 +33,13 @@ def query():
     return cursor
 
 
+def get_client():
+    global client
+    if client is None:
+        client = ita.Account(os.getenv("USER"), os.getenv("PASS"))
+    return client
+
+
 def update_db(req):
     for i, value in enumerate(req):
         try:
@@ -50,9 +59,13 @@ def get_top():
 
 
 # TODO: Figure out when to get into the market and with what sized bet based on sentiment
-# make sure you don't short SPY lol
 def activation():
-    pass
+    stonk = get_top()
+    if stonk["ticker"] == "SPY":
+        return
+    if stonk["count_ticker"] >= 4000 and stonk["rank"][-2] != 0:
+
+        get_client().trade(stonk["ticker"], ita.Action.short, 100)
 
 
 # TODO: Figure out when to get out of the market based on percent price
@@ -65,6 +78,10 @@ sched.add_job(update_db, "cron", [get_data()], day_of_week='mon-fri', hour=20)
 
 
 if __name__ == "__main__":
+    # Init step
+    load_dotenv()
+
+
     update_db(get_data())
     print(get_top())
     # sched.start()
